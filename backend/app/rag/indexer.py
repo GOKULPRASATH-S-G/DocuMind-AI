@@ -43,8 +43,8 @@ class DocumentIndexer:
         if not ext_record or not ext_record.raw_llm_json:
             raise DocumentProcessingError(f"Extraction data for document '{document_id}' is missing.")
 
-        normalized_data = dict(ext_record.raw_llm_json or {})
-        validated_data = dict(ext_record.validated_data or {})
+        normalized_data = dict(getattr(ext_record, "raw_llm_json", None) or {})
+        validated_data = dict(getattr(ext_record, "validated_json", None) or getattr(ext_record, "raw_llm_json", None) or {})
 
         # Merge validated document analysis (summary, topics, entities) into chunking text
         if validated_data and validated_data.get("summary"):

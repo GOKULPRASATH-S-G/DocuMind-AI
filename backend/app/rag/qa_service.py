@@ -100,8 +100,8 @@ class GroundedQAService:
                 for doc_rec in target_docs:
                     ext = db.query(ExtractedData).filter(ExtractedData.document_id == doc_rec.id).first()
                     if ext:
-                        v_data = ext.validated_data or {}
-                        r_data = ext.raw_llm_json or {}
+                        v_data = getattr(ext, "validated_json", None) or getattr(ext, "raw_llm_json", None) or {}
+                        r_data = getattr(ext, "raw_llm_json", None) or {}
                         
                         doc_text = ""
                         if v_data and v_data.get("summary"):

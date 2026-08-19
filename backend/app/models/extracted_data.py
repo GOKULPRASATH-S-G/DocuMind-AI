@@ -14,7 +14,7 @@ class ExtractedData(Base):
     raw_llm_json: Mapped[dict] = mapped_column(JSON, nullable=True)
     validated_json: Mapped[dict] = mapped_column(JSON, nullable=True)
     extraction_type: Mapped[str] = mapped_column(String(50), default="invoice")
-    model_name: Mapped[str] = mapped_column(String(100), default="gemini-1.5-flash")
+    model_name: Mapped[str] = mapped_column(String(100), default="gemini-3.6-flash")
     field_confidence_scores: Mapped[dict] = mapped_column(JSON, nullable=True)
     validation_errors: Mapped[list] = mapped_column(JSON, nullable=True)
     overall_confidence: Mapped[float] = mapped_column(JSON, default=0.0, nullable=True)
@@ -25,3 +25,8 @@ class ExtractedData(Base):
 
     # Relationships
     document = relationship("Document", back_populates="extracted_data")
+
+    @property
+    def validated_data(self) -> dict:
+        """Property alias for validated_json dictionary."""
+        return self.validated_json or self.raw_llm_json or {}
