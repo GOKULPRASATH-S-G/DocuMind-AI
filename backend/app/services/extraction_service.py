@@ -82,22 +82,46 @@ class ExtractionService:
         prompt = get_general_document_extraction_prompt(schema_dict)
 
         raw_json = {}
-        try:
-            raw_json = self.llm_provider.extract_structured_json(
-                prompt=prompt,
-                content=formatted_content,
-                schema=schema_dict
-            )
-        except Exception as llm_err:
-            logger.warning(f"Structured LLM extraction failed for document {document_id}: {llm_err}. Using fallback summary.")
-            first_page_text = pages[0].get("text", "") if pages else formatted_content[:500]
-            raw_json = {
-                "document_title": doc_record.filename,
-                "document_type": "General Document",
-                "summary": first_page_text[:300] or "Document text ingested successfully.",
-                "key_topics": ["General"],
-                "key_entities": []
-            }
+        has_ocr_error = "Tesseract binary not found" in formatted_content or "missing OCR" in formatted_content or "Scanned page detected" in formatted_content
+        is_image_file = doc_record.mime_type and doc_record.mime_type.startswith("image/")
+
+        # If it's an image file or scanned page without local Tesseract OCR, use Gemini Multimodal Vision directly!
+        if (has_ocr_error or is_image_file or doc_record.is_scanned) and hasattr(self.llm_provider, "analyze_image"):
+            try:
+                logger.info(f"Using Gemini Multimodal Vision directly for file {doc_record.filename} (mime={doc_record.mime_type})...")
+                img_input = doc_record.file_path
+                mime_t = doc_record.mime_type or "image/png"
+
+                if not is_image_file and doc_record.file_path.lower().endswith(".pdf"):
+                    from app.pipeline.pdf_to_image import convert_pdf_page_to_image_bytes
+                    img_input = convert_pdf_page_to_image_bytes(doc_record.file_path, 1)
+                    mime_t = "image/png"
+
+                raw_json = self.llm_provider.analyze_image(
+                    image_input=img_input,
+                    prompt=f"{prompt}\nAnalyze this image/scanned document visually and output strict JSON matching the schema.",
+                    mime_type=mime_t
+                )
+            except Exception as vis_err:
+                logger.warning(f"Gemini Multimodal Vision direct extraction fallback: {vis_err}")
+
+        if not raw_json or not isinstance(raw_json, dict) or not raw_json.get("summary"):
+            try:
+                raw_json = self.llm_provider.extract_structured_json(
+                    prompt=prompt,
+                    content=formatted_content,
+                    schema=schema_dict
+                )
+            except Exception as llm_err:
+                logger.warning(f"Structured LLM extraction failed for document {document_id}: {llm_err}. Using fallback summary.")
+                first_page_text = pages[0].get("text", "") if pages else formatted_content[:500]
+                raw_json = {
+                    "document_title": doc_record.filename,
+                    "document_type": "General Document",
+                    "summary": first_page_text[:300] or "Document text ingested successfully.",
+                    "key_topics": ["General"],
+                    "key_entities": []
+                }
 
         try:
             validated_model = GeneralDocumentExtraction.model_validate(raw_json)
