@@ -1,0 +1,39 @@
+# Environment & Secret files
+.env
+.env.local
+*.env
+*.pem
+*.key
+
+# Python & Virtualenv
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Application Uploads & Storage Data
+uploaded_files/
+chroma_data/
+backend/uploaded_files/
+backend/chroma_data/
+*.sqlite
+*.db
+backend/*.db
+
+# Node.js / Frontend
+node_modules/
+frontend/node_modules/
+frontend/dist/
+dist/
+.DS_Store
+
+# IDE & Temporary Files
+.vscode/
+.idea/
+*.log
+scratch/
