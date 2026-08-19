@@ -29,10 +29,26 @@ export default function DocumentUploader({ onUploadComplete }) {
     try {
       const doc = await uploadDocument(file);
       setUploadedDoc(doc);
+      
+      // Auto-run page ingestion
+      setIsProcessing(true);
+      const procResult = await processDocument(doc.id);
+      setExtractionResult(procResult);
+      setIsProcessing(false);
+
+      // Auto-run Gemini document intelligence & ChromaDB vector indexing
+      setIsExtracting(true);
+      const structRes = await extractStructuredData(doc.id);
+      setStructuredResult(structRes);
+      setIsExtracting(false);
+
+      if (onUploadComplete) onUploadComplete();
     } catch (err) {
-      setError(err.message || 'Failed to upload document.');
+      setError(err.message || 'Upload & automated processing failed.');
     } finally {
       setIsUploading(false);
+      setIsProcessing(false);
+      setIsExtracting(false);
     }
   };
 
