@@ -78,12 +78,55 @@ class GroundedQAService:
         )
         retrieval_duration = round(time.time() - retrieval_start, 3)
 
-        # 3. Evidence Filtering & Weak Relevance Check
+        # 3. Evidence Filtering & Weak Relevance Check with SQL DB Fallback
         valid_chunks = [c for c in retrieved_chunks if c.get("text", "").strip()]
         max_score = max([c.get("score", 0.0) for c in valid_chunks], default=0.0)
 
         if not valid_chunks or max_score < self.MIN_SIMILARITY_THRESHOLD:
-            logger.info(f"Insufficient or weak evidence found for query '{query}'. (max_score={max_score})")
+            logger.info(f"Vector search returned weak/empty evidence for '{query}'. Attempting DB document fallback...")
+            
+            # Database Evidence Fallback
+            if db:
+                from app.models.extracted_data import ExtractedData
+                target_docs = []
+                if document_id:
+                    doc = db.query(Document).filter(Document.id == document_id).first()
+                    if doc:
+                        target_docs = [doc]
+                else:
+                    target_docs = db.query(Document).order_by(Document.uploaded_at.desc()).limit(5).all()
+
+                fallback_chunks = []
+                for doc_rec in target_docs:
+                    ext = db.query(ExtractedData).filter(ExtractedData.document_id == doc_rec.id).first()
+                    if ext:
+                        v_data = ext.validated_data or {}
+                        r_data = ext.raw_llm_json or {}
+                        
+                        doc_text = ""
+                        if v_data and v_data.get("summary"):
+                            doc_text = f"Document Title: {v_data.get('document_title', doc_rec.filename)}\nCategory: {v_data.get('document_type', '')}\nSummary: {v_data.get('summary', '')}\nKey Topics: {', '.join(v_data.get('key_topics', []))}"
+                        elif r_data and r_data.get("pages"):
+                            page_texts = [p.get("text", "") for p in r_data.get("pages", []) if p.get("text")]
+                            doc_text = "\n".join(page_texts)[:1500]
+
+                        if doc_text.strip():
+                            fallback_chunks.append({
+                                "chunk_id": f"{doc_rec.id}_db_fallback",
+                                "text": doc_text,
+                                "score": 0.85,
+                                "document_id": doc_rec.id,
+                                "filename": doc_rec.filename,
+                                "page_number": 1,
+                                "source_type": "TEXT"
+                            })
+
+                if fallback_chunks:
+                    valid_chunks = fallback_chunks
+                    max_score = 0.85
+
+        if not valid_chunks:
+            logger.info(f"Insufficient evidence found for query '{query}'. (max_score={max_score})")
             no_evidence_answer = RAGAnswer(
                 answer="I couldn't find this information in the provided documents.",
                 confidence=0.0,
