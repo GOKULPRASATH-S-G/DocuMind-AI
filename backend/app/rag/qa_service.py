@@ -23,7 +23,7 @@ class GroundedQAService:
     citation verification, conflict detection, and evaluation logging.
     """
 
-    MIN_SIMILARITY_THRESHOLD = 0.25
+    MIN_SIMILARITY_THRESHOLD = 0.05
 
     def __init__(
         self,

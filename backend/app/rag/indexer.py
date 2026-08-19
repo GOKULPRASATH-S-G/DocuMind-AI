@@ -44,18 +44,36 @@ class DocumentIndexer:
             raise DocumentProcessingError(f"Extraction data for document '{document_id}' is missing.")
 
         normalized_data = dict(ext_record.raw_llm_json or {})
+        validated_data = dict(ext_record.validated_data or {})
 
-        if "visual_artifacts" not in normalized_data and hasattr(doc_record, "visual_artifacts") and doc_record.visual_artifacts:
-            normalized_data["visual_artifacts"] = [
-                {
-                    "image_id": v.image_id,
-                    "page_number": v.page_number,
-                    "visual_type": v.visual_type,
-                    "description": v.description or "",
-                    "key_values": v.key_values or [],
-                    "storage_reference": v.storage_reference
-                } for v in doc_record.visual_artifacts
-            ]
+        # Merge validated document analysis (summary, topics, entities) into chunking text
+        if validated_data and validated_data.get("summary"):
+            title = validated_data.get("document_title") or doc_record.filename
+            doc_type = validated_data.get("document_type") or "General Document"
+            summary = validated_data.get("summary") or ""
+            topics = validated_data.get("key_topics") if isinstance(validated_data.get("key_topics"), list) else []
+            entities = validated_data.get("key_entities") if isinstance(validated_data.get("key_entities"), list) else []
+            
+            summary_text = (
+                f"DOCUMENT INTELLIGENCE ANALYSIS & EXECUTIVE SUMMARY\n"
+                f"Document Title: {title}\n"
+                f"Document Type: {doc_type}\n"
+                f"Executive Summary:\n{summary}\n"
+            )
+            if topics:
+                summary_text += f"\nKey Topics: {', '.join(topics)}"
+            if entities:
+                summary_text += f"\nKey Entities: {', '.join(entities)}"
+
+            if "pages" not in normalized_data or not isinstance(normalized_data["pages"], list):
+                normalized_data["pages"] = []
+
+            # Prepend summary chunk to pages so ChromaDB ALWAYS indexes full document summary & topics!
+            normalized_data["pages"].insert(0, {
+                "page_number": 1,
+                "source": "SUMMARY",
+                "text": summary_text
+            })
 
         self.vector_store.delete_document_chunks(document_id)
 
