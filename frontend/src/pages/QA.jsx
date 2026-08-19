@@ -92,11 +92,11 @@ export default function QA({ onSelectDocument }) {
   };
 
   const sampleQuestions = [
-    'What is the total invoice amount?',
-    'Who is the client?',
-    'What services were provided?',
     'Summarize this document.',
-    'What items were purchased?'
+    'What is the main topic or purpose?',
+    'Who is the author or organization?',
+    'What are the key points or findings?',
+    'What dates or events are mentioned?'
   ];
 
   return (
