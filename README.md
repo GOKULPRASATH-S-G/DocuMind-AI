@@ -1,32 +1,29 @@
-# DocuMind AI — Multimodal Enterprise Document Intelligence & Grounded RAG Platform
+# DocuMind AI — Universal Multimodal Document Intelligence & Grounded RAG Platform
 
-> **DocuMind AI** is an enterprise-grade document intelligence platform designed to ingest, process, validate, and query complex native and scanned documents (PDFs, invoices, financial reports, images).
+> **DocuMind AI** is an AI-powered document intelligence platform designed to ingest, analyze, summarize, and query complex native and scanned documents (Patents, Academic Papers, Technical Manuals, Legal Contracts, Financial Reports, Invoices, and Images).
 
 ---
 
-## 🌟 Overview & Problem Statement
+## 🌟 Overview & Capabilities
 
-Enterprise documents are rarely clean markdown or plain text files. They contain:
+Enterprise and academic documents come in diverse formats and layouts:
 - Scanned image pages without text layers
-- Embedded structural tables and multi-column layouts
-- Low-contrast scans and varying orientations
-- Critical monetary and legal fields requiring strict validation
+- Structural tables and multi-column layouts
+- Native PDF documents, patents, contracts, and reports
 
-**DocuMind AI** solves this problem by combining layout-aware OCR, Gemini multimodal vision & LLM structured extraction, deterministic business validation rules, a human-in-the-loop (HITL) review queue, vector search with ChromaDB, and grounded Retrieval-Augmented Generation (RAG) with page-level citations.
+**DocuMind AI** solves this problem by combining layout-aware ingestion, Tesseract OCR fallback, Gemini multimodal vision & LLM structured extraction, **instant automatic vector indexing into ChromaDB**, and **Grounded Retrieval-Augmented Generation (RAG)** with page-level citations.
 
 ---
 
 ## 🔥 Key Features
 
-- **Native & Scanned PDF Ingestion**: Automatic detection of text layers with fallback to Tesseract OCR and Gemini Vision.
-- **Multimodal Extraction Engine**: Gemini 2.5 Flash structured JSON extraction for complex invoices and enterprise reports.
-- **Deterministic Business Rule Validation**: Pydantic schema validation and mathematical checks (e.g. `Net + VAT = Gross`).
-- **Confidence Scoring & Routing**: Computes overall extraction confidence scores and automatically routes low-confidence extractions ($< 85\%$) to human review.
-- **Human-in-the-Loop (HITL) Queue**: Side-by-side original document viewer and field correction dashboard with audit log history.
-- **ChromaDB Vector Store**: Chunking and embedding storage enriched with metadata (`document_id`, `page_number`, `source_type`).
-- **Grounded RAG Q&A Engine**: Strict context-bounded answer generation with page-level citations (`TEXT`, `OCR`, `TABLE`, `VISUAL`).
-- **Hallucination Protection**: Explicitly refuses to answer questions unsupported by document context.
-- **Evaluation & Observability**: Reproducible evaluation benchmark suite measuring accuracy, recall@5, grounding rate, and end-to-end latency.
+- **Universal PDF & Document Ingestion**: Automatic detection of text layers with fast PyMuPDF native extraction and Tesseract OCR fallback for scanned pages.
+- **Multimodal Intelligence & Summarization**: Gemini LLM extraction for Document Title, Category/Type, Executive Summary, Key Topics, and Key Entities.
+- **Instant Automatic Vector Indexing**: Uploaded documents are automatically processed, approved, and indexed directly into the **ChromaDB vector database** for immediate Q&A.
+- **Grounded RAG Q&A Engine**: Strict context-bounded answer generation with page-level citations (`[Page 1]`, `[Page 3]`).
+- **Hallucination Protection**: Explicitly refuses to answer questions unsupported by document evidence.
+- **Strict User Privacy & Data Isolation**: Every signed-in user strictly accesses and queries only their own uploaded documents.
+- **Real-Time Interactive UI**: Responsive React + Vite dashboard with live background status polling.
 
 ---
 
@@ -38,19 +35,14 @@ flowchart TD
     Gateway["⚡ FastAPI Gateway"]
 
     subgraph Storage ["💾 Storage Layer"]
-        DB[("🗄️ Database")]
+        DB[("🗄️ Database (SQLite / Postgres)")]
         Chroma[("⚡ ChromaDB Vector Store")]
     end
 
-    subgraph Processing ["⚙️ Ingestion & Extraction"]
-        Ingest["📄 Page Ingestion"]
-        OCR["🔍 Tesseract OCR"]
-        GeminiExt["🧠 Gemini Vision & Structured LLM"]
-        Validation["🛡️ Validation & Scoring"]
-    end
-
-    subgraph Review ["👥 Human Review"]
-        Queue["📥 Review Queue"]
+    subgraph Processing ["⚙️ Ingestion & Document Intelligence"]
+        Ingest["📄 Page Ingestion & Text Detector"]
+        OCR["🔍 Tesseract OCR Fallback"]
+        GeminiExt["🧠 Gemini Vision & LLM Analysis"]
     end
 
     subgraph RAG ["🔍 Grounded RAG Engine"]
@@ -61,10 +53,7 @@ flowchart TD
     User --> Gateway
     Gateway --> DB
     Gateway --> Ingest
-    Ingest --> OCR --> GeminiExt --> Validation
-    Validation -->|Confidence < 85%| Queue
-    Validation -->|Confidence >= 85%| Chroma
-    Queue -->|Approve/Correct| Chroma
+    Ingest --> OCR --> GeminiExt --> Chroma
     Gateway --> Retriever --> Chroma
     Retriever --> Synthesizer --> User
 ```
@@ -73,22 +62,21 @@ flowchart TD
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: React (Vite SPA), TailwindCSS, Lucide Icons, Error Boundaries
+- **Frontend**: React (Vite SPA), TailwindCSS, Lucide Icons
 - **Backend Framework**: Python 3.11, FastAPI, Uvicorn, Pydantic v2
 - **Database & Storage**: PostgreSQL / SQLite (SQLAlchemy ORM), Local Disk Storage
-- **OCR & Computer Vision**: Tesseract OCR, PyMuPDF (fitz), pdf2image, Pillow
-- **AI & LLM Services**: Google Gemini 2.5 Flash (`google-genai` SDK)
+- **OCR & Computer Vision**: Tesseract OCR, PyMuPDF (fitz), Pillow
+- **AI & LLM Services**: Google Gemini (`google-genai` SDK)
 - **Vector Search**: ChromaDB Vector Database
-- **Testing & Benchmarks**: PyTest, HTTPX TestClient
 
 ---
 
-## 🚀 Installation & Local Setup
+## 🚀 Local Setup & Installation
 
 ### 1. Prerequisites
 - Python 3.11+
 - Node.js 18+
-- Tesseract OCR engine installed on system (`C:\Program Files\Tesseract-OCR` or system PATH)
+- Tesseract OCR engine (`C:\Program Files\Tesseract-OCR` or system PATH)
 
 ### 2. Backend Setup
 ```bash
@@ -98,7 +86,7 @@ python -m venv venv
 
 pip install -r requirements.txt
 cp .env.example .env     # Configure GEMINI_API_KEY
-uvicorn app.main:app --reload --port 8000
+python -m uvicorn app.main:app --reload --port 8000
 ```
 
 ### 3. Frontend Setup
@@ -113,52 +101,32 @@ Open `http://localhost:3000` in your browser.
 
 ## 🔐 Environment Variables
 
-Create `.env` in project root:
+Create `.env` in `backend/`:
 ```ini
+PROJECT_NAME="MultiModal Document Intelligence & RAG"
+API_V1_STR="/api/v1"
+SECRET_KEY="development-secret-key"
+BACKEND_HOST=0.0.0.0
+BACKEND_PORT=8000
+DATABASE_URL=sqlite:///./doc_rag.db
 GEMINI_API_KEY=your_gemini_api_key_here
-GEMINI_MODEL=gemini-2.5-flash
-ENVIRONMENT=development
-DATABASE_URL=sqlite:///./sql_app.db
-CHROMA_HOST=localhost
-CHROMA_PORT=8000
-STORAGE_PATH=./storage
-JWT_SECRET=super_secret_production_jwt_key_12345
-LOG_LEVEL=INFO
+GEMINI_MODEL=gemini-3.6-flash
+CHROMA_PERSIST_DIR="./chroma_data"
+STORAGE_LOCAL_DIR="./uploaded_files"
 ```
 
 ---
 
 ## 📡 Key API Endpoints
 
-- `POST /api/v1/documents/upload` — Ingest document PDF/images
-- `POST /api/v1/documents/{id}/process` — Trigger page ingestion & OCR
-- `POST /api/v1/documents/{id}/extract` — Run Gemini extraction & confidence scoring
-- `GET /api/v1/reviews` — Fetch human review queue
+- `POST /api/v1/documents/upload` — Upload document PDF/images
+- `POST /api/v1/documents/{id}/process` — Run page ingestion & text extraction
+- `POST /api/v1/documents/{id}/extract` — Run Gemini document intelligence & auto-index into ChromaDB
 - `POST /api/v1/qa` — Grounded RAG question answering with page citations
-- `POST /api/v1/evaluation/run` — Execute automated evaluation benchmark suite
-- `GET /api/v1/health/ready` — System health & readiness status
-- `GET /api/v1/metrics` — Aggregate production dashboard metrics
-
----
-
-## 🔒 Security & Hardening
-
-- **JWT Token Authentication**: Role-based access control (`ADMIN`, `REVIEWER`, `USER`).
-- **Path-Traversal Protection**: Safe file lookup validation preventing unauthorized filesystem access.
-- **Audit Trails**: Full logging of field corrections, approvals, rejections, and evaluation runs.
-
----
-
-## 📊 Evaluation & Metrics
-
-Run automated benchmarks:
-```bash
-cd backend
-pytest tests/
-```
-All 78 unit and integration tests pass cleanly (100%).
+- `GET /api/v1/documents` — List user's private documents
+- `GET /api/v1/health/ready` — System health status
 
 ---
 
 ## 📄 License
-MIT License. Built for portfolio & enterprise document RAG showcase.
+MIT License. Built for portfolio & multimodal document intelligence RAG showcase.
